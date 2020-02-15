@@ -6,7 +6,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import slick.driver.PostgresDriver.api._
 import slick.dbio.DBIOAction
-import com.packt.masteringakka.bookstore.common.{BookstoreDao, PipeResponse}
+import com.packt.masteringakka.bookstore.common.{BookstoreDao, ManagerActor}
 import com.packt.masteringakka.bookstore.domain.credit.{ChargeCreditCard, CreditCardInfo, CreditCardTransaction, CreditTransactionStatus}
 import dispatch.{Future, Http, as, url}
 import org.json4s.NoTypeHints
@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext
  * @author will.109
  * @date 2020/02/15
  **/
-object CreditCardTransactionHandler extends PipeResponse {
+object CreditCardTransactionHandler extends ManagerActor {
   val Name = "credit-handler"
   implicit val formats = Serialization.formats(NoTypeHints)
 
