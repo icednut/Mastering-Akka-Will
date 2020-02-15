@@ -38,7 +38,7 @@ object Guardian {
       case (endpoint: BookstorePlan, serv) =>
         serv.plan(endpoint)
     }
-    server.run()
+    server.plan(PretentCreditCardService).run()
   }
 
   private def toBootClass(bootPrefix: String) = {
