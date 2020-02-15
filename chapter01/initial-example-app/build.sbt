@@ -10,9 +10,14 @@ lazy val commonSettings = Seq(
 )
 
 lazy val root = (project in file(".")).
-  aggregate(common, server)
+  aggregate(common, server, bookServices)
 
-lazy val common = (project in file("common")).settings(commonSettings: _*)
+lazy val common = (project in file("common"))
+  .settings(commonSettings: _*)
+
+lazy val bookServices = (project in file("book-services")).
+  settings(commonSettings: _*).
+  dependsOn(common)
 
 lazy val server = {
   Project(
@@ -32,6 +37,6 @@ lazy val server = {
       maintainer in Docker := "mastering-akka@packt.com",
       dockerBaseImage := "java:8"
     )
-  ).dependsOn(common)
+  ).dependsOn(common, bookServices)
     .enablePlugins(JavaAppPackaging)
 }
