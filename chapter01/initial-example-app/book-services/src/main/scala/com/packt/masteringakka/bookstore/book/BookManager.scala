@@ -2,7 +2,11 @@ package com.packt.masteringakka.bookstore.book
 
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
-import com.packt.masteringakka.bookstore.domain.book.BookEvent
+import com.packt.masteringakka.bookstore.common.FullResult
+import com.packt.masteringakka.bookstore.domain.book.{BookEvent, FindBook}
+
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 /**
  * @author will.109
@@ -13,10 +17,16 @@ object BookManager {
 
   def apply(): Behavior[BookEvent] = {
     Behaviors.setup(context =>
-      Behaviors.receiveMessage(message => {
-        Behaviors.empty
+      Behaviors.receiveMessage[BookEvent] {
+        case FindBook(id, replyTo) =>
+          implicit val ec = context.executionContext
+          context.log.info("Looking up book for id: {}", id)
+          Future(id).onComplete {
+            case Success(actualId) => replyTo ! FullResult(actualId)
+            case Failure(exception) => context.log.error("오류 발생", exception)
+          }
+          Behaviors.same
       })
-    )
   }
 
 }
