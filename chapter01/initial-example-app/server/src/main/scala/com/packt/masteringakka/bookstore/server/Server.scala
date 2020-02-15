@@ -3,7 +3,7 @@ package com.packt.masteringakka.bookstore.server
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorSystem, Behavior}
-import com.packt.masteringakka.bookstore.common.{BookstorePlan, Bootstrap}
+import com.packt.masteringakka.bookstore.common.{BookstorePlan, Bootstrap, PostgresDb}
 import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.collection.mutable
@@ -23,6 +23,7 @@ object Guardian {
 
   def apply(conf: Config): Behavior[Nothing] = {
     Behaviors.setup[Nothing](context => {
+      PostgresDb.init(conf)
       startHttpServer(context, conf)
       Behaviors.empty
     })

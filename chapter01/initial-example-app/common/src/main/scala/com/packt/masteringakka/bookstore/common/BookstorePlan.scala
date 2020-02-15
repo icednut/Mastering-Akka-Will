@@ -2,6 +2,7 @@ package com.packt.masteringakka.bookstore.common
 
 import akka.util.Timeout
 import com.packt.masteringakka.bookstore.domain.order.SalesOrderStatus
+import com.typesafe.scalalogging.LazyLogging
 import io.netty.handler.codec.http.HttpResponse
 import org.json4s._
 import org.json4s.ext.EnumNameSerializer
@@ -16,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * @author will.109
  * @date 2020/02/14
  **/
-trait BookstorePlan extends async.Plan with ServerErrorResponse {
+trait BookstorePlan extends async.Plan with ServerErrorResponse with LazyLogging {
 
   import scala.concurrent.duration._
 
@@ -52,7 +53,8 @@ trait BookstorePlan extends async.Plan with ServerErrorResponse {
 
       //The Future failed, so respond with a 500
       case util.Failure(ex) =>
-        val apiResp = ApiResponse(ApiResonseMeta(InternalServerError.code, Some(ServiceResult.UnexpectedFailure)))
+        logger.error(ex.getMessage, ex)
+        val apiResp = ApiResponse(ApiResonseMeta(InternalServerError.code, Some(ErrorMessage("500", Some(ex.getMessage)))))
         resp.respond(asJson(apiResp, InternalServerError))
     }
   }

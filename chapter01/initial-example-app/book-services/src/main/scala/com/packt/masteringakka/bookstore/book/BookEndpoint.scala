@@ -4,7 +4,7 @@ import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.util.Timeout
 import com.packt.masteringakka.bookstore.common.{BookstorePlan, ServiceResult}
-import com.packt.masteringakka.bookstore.domain.book.{BookEvent, FindBook}
+import com.packt.masteringakka.bookstore.domain.book.{Book, BookEvent, FindBook}
 import io.netty.channel.ChannelHandler.Sharable
 import unfiltered.netty.async.Plan.Intent
 import unfiltered.request.{GET, Path, Seg}
@@ -19,14 +19,13 @@ import scala.concurrent.{ExecutionContext, Future}
 @Sharable
 class BookEndpoint(bookManager: ActorRef[BookEvent], system: ActorSystem[Nothing]) extends BookstorePlan {
 
-  implicit val timeout: Timeout = 1.seconds
+  implicit val timeout: Timeout = 3.seconds
   implicit val scheduler = system.scheduler
 
   override def intent: Intent = {
-    case req@GET(Path(Seg("api" :: "book" :: IntPathElement(bookId) :: Nil))) => {
-      val f: Future[ServiceResult[Int]] = bookManager.ask(ref => FindBook(bookId, ref))
+    case req@GET(Path(Seg("api" :: "book" :: IntPathElement(bookId) :: Nil))) =>
+      val f: Future[ServiceResult[Option[Book]]] = bookManager.ask(ref => FindBook(bookId, ref))
       respond(f, req)
-    }
   }
 
   override implicit val ec: ExecutionContext = system.executionContext

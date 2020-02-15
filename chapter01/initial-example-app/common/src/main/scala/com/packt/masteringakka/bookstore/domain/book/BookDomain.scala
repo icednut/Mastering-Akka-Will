@@ -10,7 +10,7 @@ case class Book(id:Int, title:String, author:String, tags:List[String], cost:Dou
 
 //Lookup operations
 trait BookEvent
-case class FindBook(id:Int, replyTo: ActorRef[ServiceResult[Int]]) extends BookEvent
+case class FindBook(id:Int, replyTo: ActorRef[ServiceResult[Option[Book]]]) extends BookEvent
 case class FindBooksForIds(ids:Seq[Int]) extends BookEvent
 case class FindBooksByTags(tags:Seq[String]) extends BookEvent
 case class FindBooksByTitle(title:String) extends BookEvent

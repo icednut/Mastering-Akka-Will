@@ -16,5 +16,6 @@ libraryDependencies ++= Seq(
   "ws.unfiltered" %% "unfiltered-json4s" % unfilteredVersion,
   "org.json4s" %% "json4s-ext" % "3.6.7",
   "org.postgresql" % "postgresql" % "42.2.10",
-  "org.dispatchhttp" %% "dispatch-core" % "1.1.2"
+  "org.dispatchhttp" %% "dispatch-core" % "1.1.2",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
 )
