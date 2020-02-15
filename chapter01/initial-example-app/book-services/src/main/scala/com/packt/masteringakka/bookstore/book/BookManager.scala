@@ -3,7 +3,7 @@ package com.packt.masteringakka.bookstore.book
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import com.packt.masteringakka.bookstore.common.{BookstoreDao, ManagerActor}
-import com.packt.masteringakka.bookstore.domain.book.{Book, BookEvent, FindBook}
+import com.packt.masteringakka.bookstore.domain.book._
 import slick.dbio.DBIOAction
 import slick.jdbc.GetResult
 import slick.jdbc.H2Profile.api._
@@ -27,6 +27,18 @@ object BookManager extends ManagerActor {
           context.log.info("Looking up book for id: {}", id)
           val result: Future[Option[Book]] = dao.findBookById(id)
           pipeResponse(result, replyTo)
+          Behaviors.same
+        case FindBooksByTags(tags, ref) =>
+          Behaviors.same
+        case FindBooksByAuthor(author, ref) =>
+          Behaviors.same
+        case CreateBookAndReply(createBook, ref) =>
+          Behaviors.same
+        case AddTagToBook(bookId, tag, ref) =>
+          Behaviors.same
+        case RemoveTagFromBook(bookId, tag, ref) =>
+          Behaviors.same
+        case DeleteBook(bookId, ref) =>
           Behaviors.same
       }
     })
