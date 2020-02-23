@@ -12,6 +12,8 @@ import scala.jdk.javaapi.CollectionConverters
 object Server {
 
   def main(args: Array[String]): Unit = {
+    //    val greeterMain: ActorSystem[GreeterMain.SayHello] = ActorSystem(GreeterMain(), "Bookstore")
+    //    greeterMain ! SayHello("Charles")
     val conf: Config = ConfigFactory.load().getConfig("bookstore")
     ActorSystem[Nothing](Guardian(conf), "Bookstore", conf)
   }

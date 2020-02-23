@@ -1,1 +1,1 @@
-name := "initial-example-book-services"
+name := "book-services"

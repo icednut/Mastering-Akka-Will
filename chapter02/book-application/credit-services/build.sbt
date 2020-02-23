@@ -1,1 +1,1 @@
-name := "initial-example-credit-services"
+name := "credit-services"

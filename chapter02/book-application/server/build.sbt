@@ -1,1 +1,1 @@
-name := "initial-example-server"
+name := "server"

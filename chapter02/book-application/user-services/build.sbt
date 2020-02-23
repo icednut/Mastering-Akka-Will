@@ -1,1 +1,1 @@
-name := "initial-example-user-services"
+name := "user-services"

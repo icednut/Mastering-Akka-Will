@@ -1,1 +1,1 @@
-name := "initial-example-order-services"
+name := "order-services"

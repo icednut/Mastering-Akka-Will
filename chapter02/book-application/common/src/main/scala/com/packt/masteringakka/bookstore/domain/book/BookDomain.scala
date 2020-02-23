@@ -3,6 +3,7 @@ package com.packt.masteringakka.bookstore.domain.book
 import java.util.Date
 
 import akka.actor.typed.ActorRef
+import akka.actor.typed.receptionist.ServiceKey
 import com.packt.masteringakka.bookstore.common.ServiceResult
 
 //Persistent entities
@@ -23,3 +24,8 @@ case class AddTagToBook(bookId:Int, tag:String, replyTo: ActorRef[ServiceResult[
 case class RemoveTagFromBook(bookId:Int, tag:String, replyTo: ActorRef[ServiceResult[_]]) extends BookEvent
 case class AddInventoryToBook(bookId:Int, amount:Int, replyTo: ActorRef[ServiceResult[_]]) extends BookEvent
 case class DeleteBook(id:Int, replyTo: ActorRef[ServiceResult[_]]) extends BookEvent
+
+object BookDomain {
+  val Name = "book-manager"
+  val BookManagerKey = ServiceKey[BookEvent](Name)
+}

@@ -14,7 +14,7 @@ case class SalesOrder(id:Int, userId:Int, creditTxnId:Int, status:SalesOrderStat
 case class SalesOrderLineItem(id:Int, orderId:Int, bookId:Int, quantity:Int, cost:Double, createTs:Date,  modifyTs:Date)
 
 //Lookup requests
-sealed trait OrderEvent
+trait OrderEvent
 case class FindOrderById(id:Int, replyTo: ActorRef[ServiceResult[_]]) extends OrderEvent
 case class FindOrdersForBook(bookId:Int, replyTo: ActorRef[ServiceResult[_]]) extends OrderEvent
 case class FindOrdersForUser(userId:Int, replyTo: ActorRef[ServiceResult[_]]) extends OrderEvent

@@ -2,6 +2,7 @@ package com.packt.masteringakka.bookstore.credit
 
 import akka.actor.typed.scaladsl.ActorContext
 import com.packt.masteringakka.bookstore.common.Bootstrap
+import com.packt.masteringakka.bookstore.domain.credit.CreditDomain
 
 /**
  * @author will.109
@@ -9,7 +10,7 @@ import com.packt.masteringakka.bookstore.common.Bootstrap
  **/
 class CreditBoot extends Bootstrap {
   def bootup(context: ActorContext[Nothing]) = {
-    val creditActor = context.spawn(CreditCardTransactionHandler(), CreditCardTransactionHandler.Name)
+    val creditActor = context.spawn(CreditCardTransactionHandler(), CreditDomain.Name)
     context.watch(creditActor)
     Nil
   }
