@@ -10,7 +10,7 @@ import scala.util.{Failure, Success}
  * @author will.109
  * @date 2020/02/15
  **/
-trait PipeResponse extends LazyLogging {
+trait ManagerActor extends LazyLogging {
 
   private val toFailure: PartialFunction[Throwable, ServiceResult[Nothing]] = {
     case ex => com.packt.masteringakka.bookstore.common.Failure(FailureType.Service, ServiceResult.UnexpectedFailure, Some(ex))

@@ -1,0 +1,3 @@
+[debug] "not up to date. inChanged = true, force = false
+[debug] Updating ProjectRef(uri("file:/Users/kakaopay/workspace/study/Mastering-Akka-Will/chapter02/actor_queue_example/project/"), "actor_queue_example-build")...
+[debug] Done updating ProjectRef(uri("file:/Users/kakaopay/workspace/study/Mastering-Akka-Will/chapter02/actor_queue_example/project/"), "actor_queue_example-build")
