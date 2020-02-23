@@ -10,7 +10,7 @@ import unfiltered.netty.async.Plan.Intent
 import unfiltered.request._
 import unfiltered.response.Pass
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
 /**
@@ -27,7 +27,7 @@ class BookEndpoint(bookManager: ActorRef[BookEvent], system: ActorSystem[Nothing
 
   override def intent: Intent = {
     case req@GET(Path(Seg("api" :: "book" :: IntPathElement(bookId) :: Nil))) =>
-      val f = bookManager.ask((ref: ActorRef[ServiceResult[_]]) => FindBook(bookId, ref))
+      val f: Future[ServiceResult[_]] = bookManager.ask((ref: ActorRef[ServiceResult[_]]) => FindBook(bookId, ref))
       respond(f, req)
 
     /**

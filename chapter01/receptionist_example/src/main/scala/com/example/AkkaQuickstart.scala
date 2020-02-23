@@ -1,15 +1,11 @@
 package com.example
 
-import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
-import akka.actor.typed.receptionist.Receptionist
-import akka.actor.typed.receptionist.ServiceKey
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 
 object PingService {
   val PingServiceKey = ServiceKey[Ping]("pingService")
-
-  final case class Ping(replyTo: ActorRef[Pong.type])
-  final case object Pong
 
   def apply(): Behavior[Ping] = {
     Behaviors.setup { context =>
@@ -23,6 +19,10 @@ object PingService {
       }
     }
   }
+
+  final case class Ping(replyTo: ActorRef[Pong.type])
+
+  final case object Pong
 }
 
 object Pinger {
@@ -38,27 +38,7 @@ object Pinger {
   }
 }
 
-object Guardian {
-  def apply(): Behavior[Nothing] = {
-    Behaviors
-      .setup[Receptionist.Listing] { context =>
-        context.spawnAnonymous(PingService())
-        context.system.receptionist ! Receptionist.Subscribe(PingService.PingServiceKey, context.self)
-
-        Behaviors.receiveMessagePartial[Receptionist.Listing] {
-          case PingService.PingServiceKey.Listing(listings) =>
-            listings.foreach(ps => context.spawnAnonymous(Pinger(ps)))
-            Behaviors.same
-        }
-      }
-      .narrow
-  }
-}
-
 object PingManager {
-  sealed trait Command
-  case object PingAll extends Command
-  private case class ListingResponse(listing: Receptionist.Listing) extends Command
 
   def apply(): Behavior[Command] = {
     Behaviors.setup[Command] { context =>
@@ -75,6 +55,29 @@ object PingManager {
           Behaviors.same
       }
     }
+  }
+
+  sealed trait Command
+
+  private case class ListingResponse(listing: Receptionist.Listing) extends Command
+
+  case object PingAll extends Command
+}
+
+object Guardian {
+  def apply(): Behavior[Nothing] = {
+    Behaviors
+      .setup[Receptionist.Listing] { context =>
+        context.spawnAnonymous(PingService())
+        context.system.receptionist ! Receptionist.Subscribe(PingService.PingServiceKey, context.self)
+
+        Behaviors.receiveMessagePartial[Receptionist.Listing] {
+          case PingService.PingServiceKey.Listing(listings) =>
+            listings.foreach(ps => context.spawnAnonymous(Pinger(ps)))
+            Behaviors.same
+        }
+      }
+      .narrow
   }
 }
 

@@ -3,15 +3,15 @@ package com.packt.masteringakka.bookstore.credit
 import java.util.Date
 
 import akka.actor.typed.Behavior
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
-import slick.driver.PostgresDriver.api._
-import slick.dbio.DBIOAction
 import com.packt.masteringakka.bookstore.common.{BookstoreDao, ManagerActor}
-import com.packt.masteringakka.bookstore.domain.credit.{ChargeCreditCard, CreditCardInfo, CreditCardTransaction, CreditTransactionStatus}
+import com.packt.masteringakka.bookstore.domain.credit._
 import dispatch.{Future, Http, as, url}
 import org.json4s.NoTypeHints
 import org.json4s.native.Serialization
 import org.json4s.native.Serialization.{read, write}
+import slick.driver.PostgresDriver.api._
 
 import scala.concurrent.ExecutionContext
 
@@ -20,16 +20,17 @@ import scala.concurrent.ExecutionContext
  * @date 2020/02/15
  **/
 object CreditCardTransactionHandler extends ManagerActor {
-  val Name = "credit-handler"
   implicit val formats = Serialization.formats(NoTypeHints)
 
-  def apply(): Behavior[ChargeCreditCard] = {
-    Behaviors.receive[ChargeCreditCard]((context, message) => {
+  def apply(): Behavior[CreditEvent] = {
+    Behaviors.setup { context =>
       implicit val settings = CreditSettings(context.system)
       implicit val ec = context.executionContext
-      val dao = new CreditCardTransactionHandlerDao
 
-      message match {
+      val dao = new CreditCardTransactionHandlerDao
+      context.system.receptionist ! Receptionist.Register(CreditDomain.CreditManagerKey, context.self)
+
+      Behaviors.receiveMessage {
         case ChargeCreditCard(info, amount, replyTo) =>
           val result =
             for {
@@ -38,9 +39,9 @@ object CreditCardTransactionHandler extends ManagerActor {
               daoResult <- dao.createCreditTransaction(txn)
             } yield daoResult
           pipeResponse(result, replyTo)
+          Behaviors.same
       }
-      Behaviors.same
-    })
+    }
   }
 
   def chargeCard(info: CreditCardInfo, amount: Double)(implicit settings: CreditSettingsImpl, ec: ExecutionContext): Future[ChargeResponse] = {
@@ -55,17 +56,20 @@ object CreditCardTransactionHandler extends ManagerActor {
 
 }
 
-class CreditCardTransactionHandlerDao(implicit ec:ExecutionContext) extends BookstoreDao{
+class CreditCardTransactionHandlerDao(implicit ec: ExecutionContext) extends BookstoreDao {
+
   import DaoHelpers._
 
   /**
    * Creates a new credit card transaction record in the db
+   *
    * @param txn The credit transaction to create
    * @return a Future wrapping that CreditCardTransaction with the id assigned
    */
-  def createCreditTransaction(txn:CreditCardTransaction) = {
+  def createCreditTransaction(txn: CreditCardTransaction) = {
     val info = txn.cardInfo
-    val insert = sqlu"""
+    val insert =
+      sqlu"""
       insert into CreditCardTransaction (cardHolder, cardType, cardNumber, expiration, amount, status, confirmationCode, createTs, modifyTs)
       values (${info.cardHolder}, ${info.cardType}, ${info.cardNumber}, ${info.expiration.toSqlDate}, ${txn.amount}, ${txn.status.toString}, ${txn.confirmationCode}, ${txn.createTs.toSqlDate}, ${txn.modifyTs.toSqlDate})
     """

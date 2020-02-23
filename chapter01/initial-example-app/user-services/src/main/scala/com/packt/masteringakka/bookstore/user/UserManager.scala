@@ -3,6 +3,7 @@ package com.packt.masteringakka.bookstore.user
 import java.util.Date
 
 import akka.actor.typed.Behavior
+import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
 import com.packt.masteringakka.bookstore.common._
 import com.packt.masteringakka.bookstore.domain.user._
@@ -14,28 +15,19 @@ import scala.concurrent.{ExecutionContext, Future}
  * Companion to the UserManager service actor
  */
 object UserManager extends ManagerActor {
-  val Name = "user-manager"
   val EmailNotUniqueError = ErrorMessage("user.email.nonunique", Some("The email supplied for a create or update is not unique"))
 
   def apply(): Behavior[UserEvent] = {
-
-    Behaviors.receive((context, message) => {
+    Behaviors.setup { context =>
       implicit val ec = context.executionContext
       val dao = new UserManagerDao
 
+      context.system.receptionist ! Receptionist.Register(UserDomain.UserManagerKey, context.self)
       val recoverEmailCheck: PartialFunction[Throwable, ServiceResult[_]] = {
         case ex: EmailNotUniqueException =>
           Failure(FailureType.Validation, EmailNotUniqueError)
       }
 
-      /**
-       * Checks to make sure the email is unique
-       *
-       * @param email      The email to check
-       * @param existingId Supplied when the user already exists to avoid matching on the same user
-       *                   when checking for uniqueness
-       * @return A Future for an Option[Boolean] which will be failed if the email is not unique
-       */
       def emailUnique(email: String, existingId: Option[Int] = None) = {
         dao.
           findUserByEmail(email).
@@ -46,13 +38,6 @@ object UserManager extends ManagerActor {
           }
       }
 
-      /**
-       * Will perform an update to the user if it exists
-       *
-       * @param upd     The info to update onto the user if it exists
-       * @param userOpt The lookup result for the user.  If Some, it will be updated
-       * @return A Future for an Option[BookstoreUser]
-       */
       def maybeUpdate(upd: UpdateUserInfo, userOpt: Option[BookstoreUser]) =
         userOpt.
           map { u =>
@@ -61,7 +46,7 @@ object UserManager extends ManagerActor {
           }.
           getOrElse(Future.successful(None))
 
-      message match {
+      Behaviors.receiveMessage {
         case FindUserById(id, replyTo) =>
           pipeResponse(dao.findUserById(id), replyTo)
           Behaviors.same
@@ -100,7 +85,7 @@ object UserManager extends ManagerActor {
           pipeResponse(result, replyTo)
           Behaviors.same
       }
-    })
+    }
   }
 
   class EmailNotUniqueException extends Exception

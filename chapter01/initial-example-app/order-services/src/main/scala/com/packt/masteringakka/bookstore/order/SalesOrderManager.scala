@@ -2,22 +2,24 @@ package com.packt.masteringakka.bookstore.order
 
 import java.util.Date
 
+import akka.actor.typed.receptionist.Receptionist.Listing
+import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.AskPattern._
-import akka.actor.typed.ActorRef
-import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
 import com.packt.masteringakka.bookstore.common._
-import com.packt.masteringakka.bookstore.domain.book.{Book, BookEvent}
+import com.packt.masteringakka.bookstore.domain.book.{Book, BookDomain, BookEvent, FindBook}
 import com.packt.masteringakka.bookstore.domain.credit
-import com.packt.masteringakka.bookstore.domain.credit.{ChargeCreditCard, CreditCardTransaction, CreditTransactionStatus}
+import com.packt.masteringakka.bookstore.domain.credit._
 import com.packt.masteringakka.bookstore.domain.order._
-import com.packt.masteringakka.bookstore.domain.user.{BookstoreUser, UserEvent}
+import com.packt.masteringakka.bookstore.domain.user.{BookstoreUser, FindUserById, UserDomain, UserEvent}
 import slick.dbio.DBIOAction
 import slick.jdbc.{GetResult, SQLActionBuilder}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 
 /**
  * @author will.109
@@ -34,38 +36,16 @@ object SalesOrderManager extends ManagerActor {
   val InventoryNotAvailError = ErrorMessage("order.inventory.notavailable", Some("Inventory for an item on this order is no longer available"))
 
   def apply(): Behavior[OrderEvent] = {
-
-    Behaviors.receive((context, message) => {
+    Behaviors.setup { context =>
       implicit val timeout = Timeout(5.seconds)
       implicit val ec = context.executionContext
       implicit val scheduler = context.system.scheduler
       val dao = new SalesOrderManagerDao
 
-      /**
-       * Does a lookup of orders using information from the books tied to the orders
-       *
-       * @param f A function that returns a Future for the ids of the orders to lookup
-       * @return a Future for a Vector of SalesOrder
-       */
-      def findForBook(f: => Future[Vector[Int]]) = {
-        for {
-          orderIds <- f
-          orders <- dao.findOrdersByIds(orderIds.toSet)
-        } yield orders
-      }
-
-      /**
-       * Creates a new sales order in the system
-       *
-       * @param request The request to create the order
-       * @return a Future for a SalesOrder that will be failed if any validation failures happen
-       */
       def createOrder(request: CreateOrder): Future[SalesOrder] = {
-
-        //Resolve dependencies in parallel
-        val bookMgrFut: Option[ActorRef[BookEvent]] = lookup(BookMgrName)
-        val userMgrFut: Option[ActorRef[UserEvent]] = lookup(UserManagerName)
-        val creditMgrFut: Option[ActorRef[ChargeCreditCard]] = lookup(CreditHandlerName)
+        val bookMgrFut: Future[ActorRef[BookEvent]] = lookup[BookEvent](BookDomain.BookManagerKey)
+        val userMgrFut: Future[ActorRef[UserEvent]] = lookup[UserEvent](UserDomain.UserManagerKey)
+        val creditMgrFut: Future[ActorRef[ChargeCreditCard]] = lookup[CreditEvent](CreditDomain.CreditManagerKey)
 
         for {
           bookMgr <- bookMgrFut
@@ -80,15 +60,15 @@ object SalesOrderManager extends ManagerActor {
 
       }
 
-      /**
-       * Calls over to the credit handler to charge the credit card
-       *
-       * @param request   The request to create the order
-       * @param total     The total for the order
-       * @param creditMgr The credit manager actor ref
-       */
+      def findForBook(f: => Future[Vector[Int]]) = {
+        for {
+          orderIds <- f
+          orders <- dao.findOrdersByIds(orderIds.toSet)
+        } yield orders
+      }
+
       def chargeCreditCard(request: CreateOrder, total: Double, creditMgr: ActorRef[ChargeCreditCard]) = {
-        (creditMgr ? credit.ChargeCreditCard(request.cardInfo, total)).
+        creditMgr.ask((ref: ActorRef[ServiceResult[_]]) => credit.ChargeCreditCard(request.cardInfo, total, ref)).
           mapTo[ServiceResult[CreditCardTransaction]].
           flatMap(unwrapResult(ServiceResult.UnexpectedFailure)).
           flatMap {
@@ -99,20 +79,12 @@ object SalesOrderManager extends ManagerActor {
           }
       }
 
-      /**
-       * Looks up books for each line item input and converts them into SalesOrderLineItems, vetting
-       * if inventory is available for each first
-       *
-       * @param request The request to create the order
-       * @param bookMgr The book manager actor ref
-       * @return a Future for a list of SalesOrderLineItem that will be failed if validations fail
-       */
-      def buildLineItems(request: CreateOrder, bookMgr: ActorRef) = {
+      def buildLineItems(request: CreateOrder, bookMgr: ActorRef[BookEvent]) = {
         //Lookup Books and map into SalesOrderLineItems, validating that inventory is available for each
         val quantityMap = request.lineItems.map(i => (i.bookId, i.quantity)).toMap
 
         Future.traverse(request.lineItems) { item =>
-          (bookMgr ? FindBook(item.bookId)).
+          bookMgr.ask((ref: ActorRef[ServiceResult[_]]) => FindBook(item.bookId, ref)).
             mapTo[ServiceResult[Book]].
             flatMap(unwrapResult(InvalidBookIdError))
         }.
@@ -130,42 +102,25 @@ object SalesOrderManager extends ManagerActor {
           }
       }
 
-      /**
-       * Takes a ServiceResult and, expecting it to be a FullResult, unwraps it to the underlying
-       * type that the FullResult wraps.  If it's not a FullResult, the errorF is used to produce a failed
-       * Future
-       *
-       * @param error  An error message that will be used to fail the future if it's not a FullResult
-       * @param result The result to inspect and try and unwrap
-       * @param A      Future for type T
-       */
       def unwrapResult[T](error: ErrorMessage)(result: ServiceResult[T]): Future[T] = result match {
         case FullResult(user) => Future.successful(user)
         case other => Future.failed(new OrderProcessingException(error))
       }
 
-      /**
-       * Calls over to the userMgr to lookup a user by id
-       *
-       * @param request The request to create the order
-       * @param userMgr The user manager actor ref
-       * @return a Future wrapping a BookstoreUser that will be failed if the user does not exist
-       */
-      def loadUser(request: CreateOrder, userMgr: ActorRef) = {
-        (userMgr ? FindUserById(request.userId)).
+      def loadUser(request: CreateOrder, userMgr: ActorRef[UserEvent]) = {
+        userMgr.ask((ref: ActorRef[ServiceResult[_]]) => FindUserById(request.userId, ref)).
           mapTo[ServiceResult[BookstoreUser]].
           flatMap(unwrapResult(InvalidUserIdError))
       }
 
-      /**
-       * Looks up an actor ref via actor selection
-       *
-       * @param name The name of the actor to lookup
-       * @return A Future for an ActorRef that will be failed if the actor does not exist
-       */
-      def lookup(name: String): Option[ActorRef[_]] = context.child(s"/user/$name")
+      def lookup[T](serviceKey: ServiceKey[T]): Future[ActorRef[T]] = {
+        val eventualListing: Future[Listing] = context.system.receptionist.ask(Receptionist.Find(serviceKey))
+        eventualListing
+          .map(each => each.getServiceInstances(serviceKey).asScala)
+          .map(each => each.head)
+      }
 
-      message match {
+      Behaviors.receiveMessage {
         case FindOrderById(id, replyTo) =>
           pipeResponse(dao.findOrderById(id), replyTo)
           Behaviors.same
@@ -188,10 +143,12 @@ object SalesOrderManager extends ManagerActor {
           }, replyTo)
           Behaviors.same
       }
-    })
+    }
   }
 
   class OrderProcessingException(val error: ErrorMessage) extends Throwable
+
+  private case class ListingResponse(listing: Receptionist.Listing) extends OrderEvent
 
 }
 
