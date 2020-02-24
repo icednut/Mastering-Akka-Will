@@ -14,7 +14,7 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
  * Companion to the UserManager service actor
  */
-object UserManager extends ManagerActor {
+object UserManager extends HttpResponseMixin {
   val EmailNotUniqueError = ErrorMessage("user.email.nonunique", Some("The email supplied for a create or update is not unique"))
 
   def apply(): Behavior[UserEvent] = {

@@ -3,7 +3,7 @@ package com.packt.masteringakka.bookstore.book
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.scaladsl.Behaviors
-import com.packt.masteringakka.bookstore.common.{BookstoreDao, ManagerActor}
+import com.packt.masteringakka.bookstore.common.{BookstoreDao, HttpResponseMixin}
 import com.packt.masteringakka.bookstore.domain.book._
 import slick.dbio.DBIOAction
 import slick.jdbc.GetResult
@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * @author will.109
  * @date 2020/02/14
  **/
-object BookManager extends ManagerActor {
+object BookManager extends HttpResponseMixin {
 
   def apply(): Behavior[BookEvent] = {
     Behaviors.setup { context =>

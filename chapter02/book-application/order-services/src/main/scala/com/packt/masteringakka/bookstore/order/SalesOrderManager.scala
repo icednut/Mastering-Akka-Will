@@ -14,6 +14,7 @@ import com.packt.masteringakka.bookstore.domain.credit
 import com.packt.masteringakka.bookstore.domain.credit._
 import com.packt.masteringakka.bookstore.domain.order._
 import com.packt.masteringakka.bookstore.domain.user.{BookstoreUser, FindUserById, UserDomain, UserEvent}
+import com.packt.masteringakka.bookstore.order.SalesOrderProcessor.CreateOrderForward
 import slick.dbio.DBIOAction
 import slick.jdbc.{GetResult, SQLActionBuilder}
 
@@ -25,7 +26,7 @@ import scala.jdk.CollectionConverters._
  * @author will.109
  * @date 2020/02/15
  **/
-object SalesOrderManager extends ManagerActor {
+object SalesOrderManager extends HttpResponseMixin {
   val Name = "order-manager"
   val BookMgrName: String = "book-manager"
   val UserManagerName: String = "user-manager"
@@ -137,10 +138,12 @@ object SalesOrderManager extends ManagerActor {
           Behaviors.same
         case CreateOrderAndReply(req, replyTo) =>
           context.log.info("Creating new sales order processor and forwarding request")
-          val result = createOrder(req)
-          pipeResponse(result.recover {
-            case ex: OrderProcessingException => Failure(FailureType.Validation, ex.error)
-          }, replyTo)
+          //          val result = createOrder(req)
+          //          pipeResponse(result.recover {
+          //            case ex: OrderProcessingException => Failure(FailureType.Validation, ex.error)
+          //          }, replyTo)
+          val salesOrderProcessor = context.spawnAnonymous(SalesOrderProcessor())
+          salesOrderProcessor ! CreateOrderForward(req, replyTo)
           Behaviors.same
       }
     }

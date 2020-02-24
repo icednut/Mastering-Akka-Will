@@ -25,7 +25,7 @@ import scala.jdk.CollectionConverters._
  * @author will.109
  * @date 2020/02/15
  **/
-object SalesOrderManager extends ManagerActor {
+object SalesOrderManager extends HttpResponseMixin {
   val Name = "order-manager"
   val BookMgrName: String = "book-manager"
   val UserManagerName: String = "user-manager"

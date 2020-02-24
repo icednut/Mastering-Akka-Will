@@ -5,7 +5,7 @@ import java.util.Date
 import akka.actor.typed.Behavior
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
-import com.packt.masteringakka.bookstore.common.{BookstoreDao, ManagerActor}
+import com.packt.masteringakka.bookstore.common.{BookstoreDao, HttpResponseMixin}
 import com.packt.masteringakka.bookstore.domain.credit._
 import dispatch.{Future, Http, as, url}
 import org.json4s.NoTypeHints
@@ -19,7 +19,7 @@ import scala.concurrent.ExecutionContext
  * @author will.109
  * @date 2020/02/15
  **/
-object CreditCardTransactionHandler extends ManagerActor {
+object CreditCardTransactionHandler extends HttpResponseMixin {
   implicit val formats = Serialization.formats(NoTypeHints)
 
   def apply(): Behavior[CreditEvent] = {
