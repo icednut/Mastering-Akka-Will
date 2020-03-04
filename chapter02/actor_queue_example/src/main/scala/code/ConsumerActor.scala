@@ -19,7 +19,7 @@ object ConsumerActor {
           queue ! ActorQueue.Dequeue(context.self)
           Behaviors.same
         case GetResult(item) =>
-          val newRemaining = remaining - 1
+          var newRemaining = remaining - 1
           context.log.info(s"Consumer ${context.self.path} receive == $item")
           if (newRemaining == 0) {
             context.log.info(s"Consumer ${context.self.path} is done consuming")
@@ -27,7 +27,6 @@ object ConsumerActor {
           } else {
             queue ! ActorQueue.Dequeue(context.self)
             consumerReceive(queue, newRemaining)
-//            Behaviors.same
           }
       }
     }

@@ -9,7 +9,7 @@ object ActorQueue {
   def apply(): Behavior[Command] = emptyReceive
 
   def emptyReceive: Behavior[Command] = {
-    Behaviors.logMessages(Behaviors.withStash(100) { buffer =>
+    Behaviors.withStash(100) { buffer =>
       Behaviors.receive { (context, message) =>
         message match {
           case enqueue@Enqueue(item) =>
@@ -20,18 +20,18 @@ object ActorQueue {
             Behaviors.same
         }
       }
-    })
+    }
   }
 
   def nonEmptyReceive(items: List[Int]): Behavior[Command] = {
-    Behaviors.logMessages(Behaviors.receive { (context, message) =>
+    Behaviors.receive { (context, message) =>
       message match {
         case Enqueue(item) => nonEmptyReceive(items :+ item)
         case Dequeue(replyTo) =>
           replyTo ! ConsumerActor.GetResult(items.head)
           determineReceive(items)
       }
-    })
+    }
   }
 
   def determineReceive(items: List[Int]): Behavior[Command] = {

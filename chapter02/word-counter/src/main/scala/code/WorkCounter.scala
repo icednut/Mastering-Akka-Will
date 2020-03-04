@@ -13,7 +13,7 @@ import scala.concurrent.duration._
  * @author will.109
  * @date 2020/02/24
  **/
-object ParallerlismWorker {
+object ParallelismWorker {
 
   def apply(): Behavior[WorkMaster.Command] = {
     Behaviors.receive { (context, message) =>
@@ -37,7 +37,7 @@ object WorkMaster {
   def apply(workerCount: Int): Behavior[Command] = {
     Behaviors.setup { context =>
       val pool = Routers.pool(workerCount)(
-        Behaviors.supervise(ParallerlismWorker()).onFailure(SupervisorStrategy.restart)
+        Behaviors.supervise(ParallelismWorker()).onFailure(SupervisorStrategy.restart)
       )
       val workers: ActorRef[Command] = context.spawn(pool, "worker-pool")
       waitingForRequest(workers, context)
@@ -92,7 +92,7 @@ object MainApp {
 
       val workMaster = context.spawn(WorkMaster(workerCount), "work-master")
       val start = System.currentTimeMillis()
-      workMaster.ask((res: ActorRef[WorkMaster.Command]) => WorkMaster.StartProcessing(res))
+      workMaster.ask[WorkMaster.Command](WorkMaster.StartProcessing)
         .mapTo[IterationCount]
         .flatMap { iterations =>
           val time = System.currentTimeMillis() - start
